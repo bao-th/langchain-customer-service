@@ -6,6 +6,7 @@ from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.sqlite import SqliteSaver
 
 from env_utils import ZHIPU_API_KEY, ZHIPU_BASE_URL
+from middlewares import content_guard, auto_signature
 from tools import search_kb
 
 # model = ChatDeepSeek(model='deepseek-chat', temperature=0)
@@ -46,8 +47,9 @@ def make_agent(checkpointer):
     return create_agent(
         model=model,
         tools=[search_kb],
-        checkpointer=checkpointer,  # 保存对话记录
-        system_prompt=SYSTEM_PROMPT
+        # checkpointer=checkpointer,  # 保存对话记录
+        middleware=[content_guard, auto_signature],
+        system_prompt=SYSTEM_PROMPT,
     )
 
 
