@@ -11,7 +11,7 @@ embeddings = OpenAIEmbeddings(
     model='text-embedding-v4',
     api_key=SecretStr(DASHSCOPE_API_KEY),
     base_url='https://dashscope.aliyuncs.com/compatible-mode/v1',
-    check_embedding_ctx_length=False,
+    check_embedding_ctx_length=False,  # 跳过长度校验，直接送入模型；风险：文本超长时，模型会自动截断，丢失信息，或者直接报错。
     chunk_size=10
 )
 
