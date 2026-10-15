@@ -1,9 +1,11 @@
+from langchain.agents import AgentState
 from langchain.agents.middleware import before_model, after_agent
 from langchain_core.messages import AIMessage
+from langgraph.runtime import Runtime
 
 
 @before_model(can_jump_to=['end'])
-def content_guard(state, runtime):
+def content_guard(state: AgentState, runtime: Runtime):
     '''拦截测试命令，不执行模型。'''
     users = [msg for msg in state.get('messages', []) if msg.type == 'human']
     if users and users[-1].content.strip() == 'BLOCK_DEMO':
@@ -18,7 +20,7 @@ SIGNATURE = "\n\n---\nRUNOOB AI 客服演示｜非真实交易或人工客服服
 
 
 @after_agent
-def auto_signature(state, runtime):
+def auto_signature(state: AgentState, runtime: Runtime):
     '''仅为最终ai文本回答追加一次签名SIGNATURE'''
     messages = state.get('messages', [])
     if not messages:

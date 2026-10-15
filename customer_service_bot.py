@@ -7,7 +7,7 @@ from langgraph.checkpoint.sqlite import SqliteSaver
 
 from env_utils import ZHIPU_API_KEY, ZHIPU_BASE_URL
 from middlewares import content_guard, auto_signature
-from tools import search_kb
+from tools import search_kb, query_order, UserContext
 
 # model = ChatDeepSeek(model='deepseek-chat', temperature=0)
 # model = ChatOpenAI(
@@ -46,14 +46,15 @@ SYSTEM_PROMPT = '''你是 RUNOOB 编程学习网站的 AI 客服演示助手。
 def make_agent(checkpointer):
     return create_agent(
         model=model,
-        tools=[search_kb],
-        # checkpointer=checkpointer,  # 保存对话记录
+        tools=[search_kb, query_order],
         middleware=[content_guard, auto_signature],
         system_prompt=SYSTEM_PROMPT,
+        # checkpointer=checkpointer,  # 保存对话记录
+        context_schema=UserContext,
     )
 
 
-def chat(agent, checkpointer, thread_id, user_input: str):
+def chat(agent, thread_id: str, user_id: str, user_input: str, checkpointer):
     config = {'configurable': {'thread_id': thread_id}}
 
     # 输入reset 就清空当前thread历史
@@ -71,22 +72,24 @@ def chat(agent, checkpointer, thread_id, user_input: str):
                 {'role': 'user', 'content': user_input}
             ]
         },
-        config=config
+        config=config,
+        context=UserContext(user_id=user_id)
     )
 
 
 if __name__ == '__main__':
     print("AI客服已启动，输入 exit 结束对话\n")
-    with SqliteSaver.from_conn_string('customer_service.db') as checkpointer:
+    with SqliteSaver.from_conn_string('./customer_service_db/customer_service.db') as checkpointer:
         agent = make_agent(checkpointer)
         thread_id = 'demo-customer-001'
+        user_id = "user_xiaoming"
         while True:
             user_input = input("你：")
             if user_input.strip().lower() == "exit":
                 print("会话结束")
                 break
 
-            res = chat(agent, checkpointer, thread_id, user_input)
+            res = chat(agent, thread_id, user_id, user_input, checkpointer)
 
             # 打印AI最后一条回复
             print(f"AI：{res["messages"][-1].content}")

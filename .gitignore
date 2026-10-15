@@ -1,7 +1,7 @@
 venv/
 __pycache__/
 *.pyc
-customer_service.db
+customer_service_db/
 runoob_kb/
 
 # 环境变量文件
