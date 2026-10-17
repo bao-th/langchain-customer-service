@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from langchain_core.tools import tool
 from langgraph.prebuilt import ToolRuntime
+from langgraph.types import interrupt
 
 from knowledge_base import retriever
 
@@ -47,7 +48,7 @@ class UserContext:
 def query_order(order_id: str, runtime: ToolRuntime[UserContext]) -> str:
     """查询当前已认证用户的模拟订单。"""
     order_id = order_id.strip().upper()
-    order = orders_db[order_id]
+    order = orders_db.get(order_id)
 
     if not order or order["owner_id"] != runtime.context.user_id:
         return "未找到可访问的订单。"
@@ -56,6 +57,21 @@ def query_order(order_id: str, runtime: ToolRuntime[UserContext]) -> str:
         f"模拟订单 {order_id}：{order['item']}，"
         f"¥{order['amount']}，状态：{order['status']}。"
     )
+
+
+@tool
+def transfer_to_human(reason: str) -> str:
+    """请求模拟人工转接，需要外部审批。"""
+    decision = interrupt({
+        'action': 'transfer_to_human',
+        'reason': reason,
+        'message': '是否批准这次模拟人工转接？'
+    })
+
+    if not isinstance(decision, dict) or decision.get('approved') is not True:
+        return '人工转接申请已取消。'
+
+    return '模拟转接已获批准。本程序未连接真实人工客服系统，也没有创建工单。'
 
 
 if __name__ == '__main__':

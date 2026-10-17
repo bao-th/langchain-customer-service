@@ -4,10 +4,11 @@ from langchain_core.messages import AIMessage
 from langchain_deepseek import ChatDeepSeek
 from langchain_openai import ChatOpenAI
 from langgraph.checkpoint.sqlite import SqliteSaver
+from langgraph.types import Command
 
 from env_utils import ZHIPU_API_KEY, ZHIPU_BASE_URL
 from middlewares import content_guard, auto_signature
-from tools import search_kb, query_order, UserContext
+from tools import search_kb, query_order, UserContext, transfer_to_human
 
 # model = ChatDeepSeek(model='deepseek-chat', temperature=0)
 # model = ChatOpenAI(
@@ -22,7 +23,7 @@ model = init_chat_model(
     temperature=0,
     api_key=ZHIPU_API_KEY,
     base_url=ZHIPU_BASE_URL,
-    max_tokens=16  # 新增这一行，限制最大输出token
+    max_tokens=128  # 新增这一行，限制最大输出token
 )
 
 SYSTEM_PROMPT = '''你是 RUNOOB 编程学习网站的 AI 客服演示助手。
@@ -46,10 +47,10 @@ SYSTEM_PROMPT = '''你是 RUNOOB 编程学习网站的 AI 客服演示助手。
 def make_agent(checkpointer):
     return create_agent(
         model=model,
-        tools=[search_kb, query_order],
+        tools=[search_kb, query_order, transfer_to_human],
         middleware=[content_guard, auto_signature],
         system_prompt=SYSTEM_PROMPT,
-        # checkpointer=checkpointer,  # 保存对话记录
+        checkpointer=checkpointer,  # 保存对话记录
         context_schema=UserContext,
     )
 
@@ -66,15 +67,46 @@ def chat(agent, thread_id: str, user_id: str, user_input: str, checkpointer):
             ]
         }
 
-    return agent.invoke(
-        {
-            "messages": [
-                {'role': 'user', 'content': user_input}
-            ]
-        },
+    result = agent.invoke(
+        {"messages": [{'role': 'user', 'content': user_input}]},
         config=config,
         context=UserContext(user_id=user_id)
     )
+
+    pending = result.get('__interrupt__', [])
+    # 存在中断：返回待审批状态，前端/控制台展示审批面板
+    if pending:
+        return {
+            'status': 'pending_approval',
+            'actions': [item.value for item in pending]
+        }
+
+    return result
+
+
+# 恢复转接申请
+def resume_transfer(agent, thread_id: str, user_id: str, approved: bool):
+    config = {'configurable': {'thread_id': thread_id}}
+    state = agent.get_state(config)
+    pending = [i for task in state.tasks for i in task.interrupts]
+
+    if not pending:
+        return {'status': 'error', "message": "当前没有等待处理的转接申请。"}
+
+    # 演示函数假定后台已验证审批权限和会话归属
+    result = agent.invoke(
+        Command(resume={'approved': approved}),
+        config=config,
+        context=UserContext(user_id=user_id)
+    )
+
+    if result.get('__interrupt__', ()):
+        return {
+            'status': 'pending_approval',
+            'message': '仍有待处理的中断。'
+        }
+
+    return result
 
 
 if __name__ == '__main__':
@@ -91,11 +123,19 @@ if __name__ == '__main__':
 
             res = chat(agent, thread_id, user_id, user_input, checkpointer)
 
+            # 处理待审批状态
+            if res.get('status') == 'pending_approval':
+                print("待审批：", res["actions"])
+                # 模拟管理员审批，
+                choice = input("模拟管理员审批，输入 y 通过 / n 拒绝：").strip().lower()
+                approved = choice == "y"
+                res = resume_transfer(agent, thread_id, user_id, approved)
+
             # 打印AI最后一条回复
             print(f"AI：{res["messages"][-1].content}")
 
             # 遍历所有消息，打印类型+内容
-            print("\033[33m===== 本轮完整消息列表 =====")
-            for msg in res["messages"]:
-                print(f"【{msg.type}】 {msg.content}")
-            print("===== 结束结束结束结束 =====\n\033[0m")
+            # print("\033[33m===== 本轮完整消息列表 =====")
+            # for msg in res["messages"]:
+            #     print(f"【{msg.type}】 {msg.content}")
+            # print("===== 结束结束结束结束 =====\n\033[0m")
