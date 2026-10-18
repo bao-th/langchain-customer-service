@@ -4,7 +4,10 @@ from langchain_core.tools import tool
 from langgraph.prebuilt import ToolRuntime
 from langgraph.types import interrupt
 
+from KnowledgeBase import KnowledgeBase
 from knowledge_base import retriever
+
+kb = KnowledgeBase('./my_knowledge_db')
 
 
 @tool
@@ -13,14 +16,35 @@ def search_kb(query: str) -> str:
     :param query: 用户查询问题
     :return: 知识库返回的检索结果
     """
-    docs = retriever.invoke(query)
+    docs = kb.search(query, k=3)
     if not docs:
-        return "未找到相关资料"
-    return '\n\n'.join(
-        f"[来源{i}] {doc.metadata.get('title', '未知')}\n"
-        f"{doc.page_content}"
-        for i, doc in enumerate(docs, 1)
-    )
+        return "知识库中没有检索到相关资料。"
+
+    results = []
+    for i, doc in enumerate(docs, 1):
+        meta = doc.metadata
+        source = meta.get("source", "未知文档")
+        page = meta.get("page")
+        location = f"{source} / 第{page + 1}页" if page is not None else source
+        results.append(f"[来源{i}] {location}\n{doc.page_content[:1500]}")
+
+    return "\n\n".join(results)
+
+
+# @tool
+# def search_kb(query: str) -> str:
+#     """检索模拟课程知识库，查询教程、学习内容和系统说明。
+#     :param query: 用户查询问题
+#     :return: 知识库返回的检索结果
+#     """
+#     docs = retriever.invoke(query)
+#     if not docs:
+#         return "未找到相关资料"
+#     return '\n\n'.join(
+#         f"[来源{i}] {doc.metadata.get('title', '未知')}\n"
+#         f"{doc.page_content}"
+#         for i, doc in enumerate(docs, 1)
+#     )
 
 
 orders_db = {

@@ -1,0 +1,96 @@
+# JavaScript 语法知识库文档
+## 简介
+JavaScript（简称JS）是弱类型脚本语言，既可在浏览器前端运行，也能通过Node.js在服务端运行。本知识库用于解答JS基础语法、常用API、代码示例、易错点相关问题。
+
+## 1. 变量声明
+1. var：函数作用域，存在变量提升，允许重复定义，容易引发变量污染，新项目不推荐使用。
+2. let：块级作用域，支持修改变量值，同一作用域不可重复声明。
+3. const：块级作用域常量，声明后不能重新赋值；如果是对象、数组，内部成员可以修改。
+示例：
+const appName = "RAG客服";
+let count = 1;
+count = 2;
+
+## 2. 基础数据类型
+原始值类型：string、number、boolean、null、undefined、symbol、bigint
+引用类型：Object、Array、Function
+注意：typeof null 的返回结果是 object，属于语言历史遗留bug。
+
+## 3. 运算符
+=== 严格相等，同时校验值和类型，项目优先使用；
+== 宽松相等，会自动隐式类型转换，尽量避免；
+?. 可选链运算符：安全读取深层对象属性，属性不存在不会抛出报错；
+?? 空值合并运算符：仅当左侧为 null / undefined 时，才使用右侧默认值。
+示例：user?.info?.address
+
+## 4. 函数
+普通函数写法：
+function add(a, b) {
+  return a + b;
+}
+
+箭头函数：
+const add = (a, b) => a + b;
+
+箭头函数特点：
+1. 不绑定this，this继承外层作用域
+2. 没有arguments对象
+3. 不能当作构造函数，不支持new实例化
+
+## 5. 对象与解构赋值
+对象定义：
+const user = {
+  name: "小李",
+  age: 24
+};
+
+对象解构：const { name, age } = user;
+数组解构：const [x, y] = [10, 20];
+
+## 6. 数组常用方法
+map：遍历数组，返回新数组，适合数据转换
+filter：过滤元素，返回满足条件的新数组
+find：查找第一个匹配项，找不到返回undefined
+forEach：遍历执行回调，无返回值，无法中断循环
+reduce：做累加、聚合计算
+示例：
+const arr = [1, 2, 3];
+const res = arr.map(item => item * 2);
+
+## 7. 模板字符串
+使用反引号 ` `，支持换行与变量插值
+const name = "小明";
+const str = `用户名：${name}`;
+
+## 8. 异步编程 Promise + async/await
+Promise 用来处理异步任务，解决回调地狱。
+async/await 是Promise的语法糖，写法接近同步代码。
+await 只能写在async函数内部，异常捕获使用 try catch。
+示例：
+function sleep() {
+  return new Promise(resolve => setTimeout(() => resolve("done"), 1000))
+}
+
+async function run() {
+  try {
+    const result = await sleep();
+    console.log(result);
+  } catch (err) {
+    console.error("异常：", err);
+  }
+}
+
+## 9. 分支与循环
+if else、switch 用于条件判断。
+for、while、for...of 遍历可迭代对象。
+for...in 适合遍历对象key，不推荐遍历数组。
+
+## 10. JS常见坑
+1. 浮点数精度问题：0.1 + 0.2 !== 0.3
+2. forEach 循环不能使用break终止，需要中断改用普通for循环或some
+3. 异步代码执行顺序和阅读顺序不一致，容易出现时序bug
+4. 弱类型自动转换，不同类型相加容易出现意外结果
+
+## 问答边界
+本知识库只回答JS基础语法、API使用、语法差异、简单代码示例。
+不会直接生成完整大型业务项目代码；复杂线上bug，需要提供最小复现代码辅助排查。
