@@ -88,6 +88,19 @@ def chat(agent, thread_id: str, user_id: str, user_input: str, checkpointer):
     return result
 
 
+def chat_stream(agent, thread_id: str, user_id: str, user_input: str, checkpointer):
+    config = {'configurable': {'thread_id': thread_id}}
+
+    result = agent.stream(
+        {"messages": [{'role': 'user', 'content': user_input}]},
+        config=config,
+        context=UserContext(user_id=user_id),
+        stream_mode="messages"
+    )
+
+    return result
+
+
 # 恢复转接申请
 def resume_transfer(agent, thread_id: str, user_id: str, approved: bool):
     config = {'configurable': {'thread_id': thread_id}}
@@ -113,8 +126,8 @@ def resume_transfer(agent, thread_id: str, user_id: str, approved: bool):
     return result
 
 
-if __name__ == '__main__':
-    print("AI客服已启动，输入 exit 结束对话\n")
+def ask():
+    """对话"""
     with SqliteSaver.from_conn_string('./customer_service_db/customer_service.db') as checkpointer:
         agent = make_agent(checkpointer)
         thread_id = 'demo-customer-001'
@@ -143,3 +156,35 @@ if __name__ == '__main__':
             # for msg in res["messages"]:
             #     print(f"【{msg.type}】 {msg.content}")
             # print("===== 结束结束结束结束 =====\n\033[0m")
+
+
+def ask_stream():
+    """流式对话"""
+    with SqliteSaver.from_conn_string('./customer_service_db/customer_service.db') as checkpointer:
+        agent = make_agent(checkpointer)
+        thread_id = 'demo-customer-001'
+        user_id = "user_xiaoming"
+        while True:
+            user_input = input("你：")
+            if user_input.strip().lower() == "exit":
+                print("会话结束", end='', flush=True)
+                break
+
+            res = chat_stream(agent, thread_id, user_id, user_input, checkpointer)
+            print('AI：', end='', flush=True)
+
+            for chunk, metadata in res:
+                if metadata.get("langgraph_node") != "model":
+                    continue
+                if getattr(chunk, "tool_call_chunks", None):
+                    continue
+                if isinstance(chunk.content, str):
+                    print(chunk.content, end='', flush=True)
+
+            print('\n', flush=True)
+
+
+if __name__ == '__main__':
+    print("AI客服已启动，输入 exit 结束对话\n")
+    ask()
+    # ask_stream()
