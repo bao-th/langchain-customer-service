@@ -81,7 +81,7 @@ def chat_stream(agent, thread_id: str, user_id: str, user_input: str, checkpoint
 
 
 # 恢复转接申请
-def resume_transfer(agent, thread_id: str, user_id: str, approved: bool):
+def resume_apply(agent, thread_id: str, user_id: str, approved: bool):
     config = {'configurable': {'thread_id': thread_id}}
     state = agent.get_state(config)
     pending = [i for task in state.tasks for i in task.interrupts]
@@ -96,13 +96,29 @@ def resume_transfer(agent, thread_id: str, user_id: str, approved: bool):
         context=UserContext(user_id=user_id)
     )
 
-    if result.get('__interrupt__', ()):
+    pending = result.get('__interrupt__', [])
+    if pending:
         return {
             'status': 'pending_approval',
-            'message': '仍有待处理的中断。'
+            'message': '仍有待处理的中断。',
+            'actions': [item.value for item in pending]
         }
 
     return result
+
+
+def recursive_deal_approval_status(agent, thread_id: str, user_id: str, chatResult):
+    """递归处理待审批状态"""
+    if chatResult.get('status') == 'pending_approval':
+        print("待审批：", chatResult["actions"])
+        # 模拟管理员审批
+        choice = input("模拟管理员审批，输入 y 通过 / n 拒绝：").strip().lower()
+        approved = choice == "y"
+
+        res = resume_apply(agent, thread_id, user_id, approved)
+        return recursive_deal_approval_status(agent, thread_id, user_id, res)
+    else:
+        return chatResult
 
 
 def ask():
@@ -120,21 +136,16 @@ def ask():
             res = chat(agent, thread_id, user_id, user_input, checkpointer)
 
             # 处理待审批状态
-            if res.get('status') == 'pending_approval':
-                print("待审批：", res["actions"])
-                # 模拟管理员审批，
-                choice = input("模拟管理员审批，输入 y 通过 / n 拒绝：").strip().lower()
-                approved = choice == "y"
-                res = resume_transfer(agent, thread_id, user_id, approved)
+            res = recursive_deal_approval_status(agent, thread_id, user_id, res)
 
             # 打印AI最后一条回复
             print(f"AI：{res["messages"][-1].content}")
 
             # 遍历所有消息，打印类型+内容
-            print("\033[33m===== 本轮完整消息列表 =====")
-            for msg in res["messages"]:
-                print(f"【{msg.type}】 {msg.content}")
-            print("===== 结束结束结束结束 =====\n\033[0m")
+            # print("\033[33m===== 本轮完整消息列表 =====")
+            # for msg in res["messages"]:
+            #     print(f"【{msg.type}】 {msg.content or msg.tool_calls}")
+            # print("===== 结束结束结束结束 =====\n\033[0m")
 
 
 def ask_stream():
