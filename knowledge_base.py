@@ -1,3 +1,4 @@
+from langchain.embeddings import init_embeddings
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
@@ -14,6 +15,14 @@ embeddings = OpenAIEmbeddings(
     check_embedding_ctx_length=False,  # 跳过长度校验，直接送入模型；风险：文本超长时，模型会自动截断，丢失信息，或者直接报错。
     chunk_size=10
 )
+
+# embeddings = init_embeddings(
+#     model='dashscope:text-embedding-v4',
+#     api_key=SecretStr(DASHSCOPE_API_KEY),
+#     base_url='https://dashscope.aliyuncs.com/compatible-mode/v1',
+#     check_embedding_ctx_length=False,
+#     chunk_size=10
+# )
 
 # 实例数据库
 vector_store = Chroma(

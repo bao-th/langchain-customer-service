@@ -15,8 +15,12 @@ kb = KnowledgeBase('./my_knowledge_db')
 @tool
 def search_kb(query: str) -> str:
     """检索模拟课程知识库，查询教程、学习内容和系统说明。
-    :param query: 用户查询问题
-    :return: 知识库返回的检索结果
+
+    Args:
+        query: 用户查询问题
+
+    Returns:
+        知识库返回的检索结果
     """
     docs = kb.search(query, k=3)
     if not docs:

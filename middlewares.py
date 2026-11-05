@@ -1,16 +1,20 @@
 from datetime import datetime
+from typing import Callable, Any
 
 from langchain.agents import AgentState
-from langchain.agents.middleware import before_model, after_agent, dynamic_prompt, ModelRequest
-from langchain_core.messages import AIMessage
+from langchain.agents.middleware import before_model, after_agent, dynamic_prompt, ModelRequest, wrap_model_call, \
+    ModelResponse, wrap_tool_call
+from langchain_core.messages import AIMessage, ToolMessage
+from langgraph.prebuilt.tool_node import ToolCallRequest
 from langgraph.runtime import Runtime
+from langgraph.types import Command
 
 from simulated_data import TIMEZONE
 
 
 @before_model(can_jump_to=['end'])
 def content_guard(state: AgentState, runtime: Runtime):
-    '''拦截测试命令，不执行模型。'''
+    """拦截测试命令，不执行模型。"""
     users = [msg for msg in state.get('messages', []) if msg.type == 'human']
     if users and users[-1].content.strip() == 'BLOCK_DEMO':
         return {
@@ -76,3 +80,34 @@ def inject_date_context(request: ModelRequest) -> str:
 
     extra = f"当前日期：{now.date().isoformat()}，星期{weekday}。\n时区：Asia/Shanghai。\n"
     return SYSTEM_PROMPT + '\n' + extra
+
+
+@wrap_model_call
+def wrap_model_call_middleware(
+        request: ModelRequest,
+        handler: Callable[[ModelRequest], ModelResponse]
+) -> ModelResponse | None:
+    request.messages[-1].content += '---> wrap_model_call_before <---'
+
+    # 模型的调用
+    response = handler(request)
+    response.result[0].content += '---> wrap_model_call_after <---'
+
+    return response
+
+
+@wrap_tool_call
+def wrap_tool_call_middleware(
+        request: ToolCallRequest,
+        handler: Callable[[ToolCallRequest], ToolMessage | Command[Any]],
+) -> ToolMessage | Command[Any]:
+    result = handler(request)
+    print(f"原始参数:{request.tool_call['args']}")
+    print(f"原始参数调用结果:{result}")
+
+    request.tool_call["args"]["is_forcast"] = True
+    result = handler(request)
+
+    print(f"更新以后的参数:{request.tool_call['args']}")
+    print(f"更新以后的参数调用结果:{result}")
+    return result
