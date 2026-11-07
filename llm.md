@@ -202,3 +202,5 @@ text_splitter = RecursiveCharacterTextSplitter(
 5. Redis：开源内存数据结构存储,现已原生支持向量相似性搜索功能
 6. Elasticsearch：开源分布式搜索和分析引擎,提供了一个基于文档的数据库,结构化、非结构化和向量数据通过高效的列式存储统一管理
 7. Pinecone：具有广泛功能的向量数据库
+
+![alt text](image.png)
